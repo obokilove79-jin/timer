@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수업용 카운트다운 타이머</title>
+<style>
+:root{font-family:Pretendard,'Noto Sans KR',system-ui,sans-serif;color:#f8fafc;background:#0b1220}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px}.panel{width:min(780px,100%);background:#141e30;border:1px solid #29374e;border-radius:28px;padding:clamp(22px,5vw,46px);box-shadow:0 22px 65px #0005}h1{font-size:clamp(23px,3.5vw,34px);margin:0 0 8px}.subtitle{margin:0 0 26px;color:#a9b8ce}.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}button{font:inherit;cursor:pointer;transition:background .15s,transform .12s}button:active{transform:scale(.97)}.preset{border:1px solid #3e506a;background:#1e2b40;border-radius:15px;padding:15px 6px;color:#e8f1ff;font-size:clamp(17px,2.7vw,23px);font-weight:700}.preset.active{border-color:#64d8ff;background:#143e57;color:#a5eaff}.custom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#d0d9e7;margin-bottom:18px}.custom label{font-weight:700}.custom input{width:84px;border:1px solid #465b78;background:#101b2b;color:white;text-align:center;padding:12px 7px;border-radius:12px;font:700 20px inherit;font-size:20px}.custom span{color:#adbed0}.set{border:1px solid #5683a8;background:#263d56;color:white;border-radius:12px;padding:12px 18px;font-weight:700}.clock{position:relative;text-align:center;background:#0d1727;border:1px solid #28394f;border-radius:24px;margin:14px 0 20px;padding:28px 12px 32px;overflow:hidden}.status{font-size:17px;color:#9eafc6;font-weight:600;min-height:25px}.time{font-variant-numeric:tabular-nums;font-size:clamp(76px,16vw,148px);font-weight:800;letter-spacing:-.065em;line-height:1.3}.clock.urgent .time{color:#ffb454}.clock.done .time{color:#69e7bd}.progress{height:10px;background:#26384d;border-radius:10px;overflow:hidden;margin:10px 7% 0}.bar{height:100%;background:linear-gradient(90deg,#31bde9,#70e1ba);width:100%;transition:width .15s linear}.clock.urgent .bar{background:#ffb454}.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.start,.reset{border:0;border-radius:16px;padding:18px 10px;font-weight:800;font-size:22px}.start{background:#63d5ff;color:#062032}.reset{background:#2b3a50;color:#fff}.settings{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:23px;color:#c6d3e3;font-size:16px}.settings input{width:21px;height:21px;accent-color:#69d3fb}.help{font-size:14px;color:#8194af;margin:14px 0 0;line-height:1.6}@media(max-width:480px){.panel{padding:20px}.custom input{width:67px}.custom{gap:7px}.set{padding:12px}.time{font-size:clamp(63px,16vw,100px)}}
+</style></head>
+<body><main class="panel">
+<h1>⏱ 수업용 카운트다운 타이머</h1><p class="subtitle">원하는 시간을 설정하고 시작하세요.</p>
+<div class="presets"><button class="preset active" data-sec="180">3분</button><button class="preset" data-sec="300">5분</button><button class="preset" data-sec="600">10분</button></div>
+<div class="custom"><label for="minutes">직접 설정</label><input id="minutes" type="number" min="0" max="999" value="3" aria-label="분"><span>분</span><input id="seconds" type="number" min="0" max="59" value="0" aria-label="초"><span>초</span><button class="set" id="apply">시간 적용</button></div>
+<div class="clock" id="clock" role="timer" aria-live="off"><div class="status" id="status">시작할 준비가 되었습니다</div><div class="time" id="time">03:00</div><div class="progress"><div class="bar" id="bar"></div></div></div>
+<div class="controls"><button class="start" id="toggle">▶ 시작</button><button class="reset" id="reset">↺ 초기화</button></div>
+<div class="settings"><input type="checkbox" id="sound" checked><label for="sound">마지막 10초 알림음 켜기 (10초부터 매초)</label></div>
+<p class="help">시작 버튼을 누르면 알림 소리가 활성화됩니다. 다른 탭에 있거나 화면이 잠기면 소리 재생이 제한될 수 있으므로 수업 중에는 이 화면을 열어 두세요.</p>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const presets=[...document.querySelectorAll('.preset')];
+let duration=180,remaining=180,running=false,deadline=0,interval=null,lastAlert=11,audio=null;
+function ensureAudio(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!audio)audio=new AC();if(audio.state==='suspended')audio.resume().catch(()=>{});}catch(e){}}
+function beep(freq=800,len=.12,vol=.13){if(!$('sound').checked)return;try{ensureAudio();if(!audio)return;const osc=audio.createOscillator(),gain=audio.createGain(),t=audio.currentTime;osc.type='sine';osc.frequency.setValueAtTime(freq,t);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(vol,t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+len);osc.connect(gain);gain.connect(audio.destination);osc.start(t);osc.stop(t+len+.02);}catch(e){}}
+function render(){const m=Math.floor(remaining/60),s=remaining%60;$('time').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');$('bar').style.width=(duration?100*remaining/duration:0)+'%';$('clock').classList.toggle('urgent',remaining>0&&remaining<=10);$('clock').classList.toggle('done',remaining===0);$('toggle').textContent=running?'Ⅱ 일시정지':remaining===0?'▶ 다시 시작':'▶ 시작';$('status').textContent=remaining===0?'시간 종료!':running?(remaining<=10?'마지막 '+remaining+'초!':'카운트다운 진행 중'):'시작할 준비가 되었습니다';}
+function stop(){running=false;if(interval!==null){clearInterval(interval);interval=null;}}
+function setDuration(sec){stop();duration=remaining=sec;lastAlert=11;$('minutes').value=Math.floor(sec/60);$('seconds').value=sec%60;presets.forEach(b=>b.classList.toggle('active',Number(b.dataset.sec)===sec));render();}
+function tick(){if(!running)return;const prev=remaining;remaining=Math.max(0,Math.ceil((deadline-performance.now())/1000));if(remaining!==prev){if(remaining<=10&&remaining>=1&&remaining<lastAlert){beep(remaining<=3?1000:760,.13);lastAlert=remaining;}if(remaining===0){stop();beep(600,.18);setTimeout(()=>beep(870,.22),240);setTimeout(()=>beep(1050,.4),520);}render();}}
+presets.forEach(b=>b.addEventListener('click',()=>setDuration(Number(b.dataset.sec))));
+$('apply').addEventListener('click',()=>{const mm=Number($('minutes').value),ss=Number($('seconds').value);if(!Number.isInteger(mm)||!Number.isInteger(ss)||mm<0||mm>999||ss<0||ss>59||(mm===0&&ss===0)){alert('0분 1초부터 999분 59초까지 설정해 주세요.');return;}setDuration(mm*60+ss);});
+$('toggle').addEventListener('click',()=>{ensureAudio();if(running){remaining=Math.max(0,Math.ceil((deadline-performance.now())/1000));stop();render();return;}if(remaining===0){remaining=duration;lastAlert=11;}running=true;deadline=performance.now()+remaining*1000;interval=setInterval(tick,80);render();});
+$('reset').addEventListener('click',()=>setDuration(duration));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+render();
+})();
+</script></body></html>
